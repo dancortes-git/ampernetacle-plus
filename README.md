@@ -1,9 +1,12 @@
-# Ampernetacle
+# Ampernetacle Plus
 
 This is a Terraform configuration to deploy a Kubernetes cluster on
 [Oracle Cloud Infrastructure][oci]. It creates a few virtual machines
 and uses [kubeadm] to install a Kubernetes control plane on the first
 machine, and join the other machines as worker nodes.
+
+It's a fork from [Original Ampertacle Repository][original-ampertable] and
+adds new amazing new features and improvements.
 
 By default, it deploys a 4-node cluster using ARM machines. Each machine
 has 1 OCPU and 6 GB of RAM, which means that the cluster fits within
@@ -67,6 +70,30 @@ advantage of the free tier.
 ## Stopping the cluster
 
 `terraform destroy`
+
+## Best practices at Cluster
+
+1. Define resources (requests and limits) for all containers ([Manage Resources Container - Official Documentation][manage-resources-containers])
+2. Define liveness probe for all containers ([Liveness and Readiness Probes - Official Documentation][liveness-readiness-startup-probes])
+3. Define readiness proble for all containers ([Liveness and Readiness Probes - Official Documentation][liveness-readiness-startup-probes])
+
+### Resources, Liveness and Readiness Probe important information:
+
+- Resources
+   - `requests`: Necessary resources to start/ready
+      - `requests.cpu`: In millicpu. Example "2m".
+      - `requests.memory`: Memory Unit. Example "5Mi".
+   - `limits`: Limit to restart
+      - `limits.cpu`: In millicpu. Example "2m".
+      - `limits.memory`: Memory Unit. Example "5Mi".
+
+- Liveness
+   - `failureThreshold`: After a probe fails failureThreshold times in a row, Kubernetes considers that the overall check has failed: the container is not ready/healthy/live. Defaults to 3.
+   - `initialDelaySeconds`: Number of seconds after the container has started before startup, liveness or readiness probes are initiated.
+   - `periodSeconds`: How often (in seconds) to perform the probe. Default to 10 seconds. The minimum value is 1.
+   - `successThreshold`:  Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1. Must be 1 for liveness and startup Probes. Minimum value is 1.
+   - `timeoutSeconds`:  Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1.
+
 
 ## Implementation details
 
@@ -222,3 +249,6 @@ tail -n 100 -f /var/log/cloud-init-output.log
 [kubeadm]: https://kubernetes.io/docs/reference/setup-tools/kubeadm/
 [oci]: https://www.oracle.com/cloud/compute/
 [oke]: https://www.oracle.com/cloud-native/container-engine-kubernetes/
+[manage-resources-containers]: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+[liveness-readiness-startup-probes]: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+[original-ampertable]: https://github.com/jpetazzo/ampernetacle

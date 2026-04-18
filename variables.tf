@@ -1,6 +1,6 @@
 variable "name" {
   type    = string
-  default = "kubernetes-on-arm-with-oracle"
+  default = "k8s-on-arm-in-oci"
 }
 
 /*
