@@ -7,3 +7,8 @@ id_rsa*
 
 # K8s
 kubeconfig
+
+# Logs
+*.log
+logs
+logs/*

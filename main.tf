@@ -1,6 +1,6 @@
 resource "oci_identity_compartment" "_" {
   name          = var.name
-  description   = var.name
+  description   = var.description
   enable_delete = true
 }
 
@@ -15,10 +15,8 @@ data "oci_identity_availability_domains" "_" {
 data "oci_core_images" "_" {
   compartment_id           = local.compartment_id
   shape                    = var.shape
-  operating_system         = "Canonical Ubuntu"
-  operating_system_version = "22.04"
-  #operating_system         = "Oracle Linux"
-  #operating_system_version = "7.9"
+  operating_system         = var.operating_system
+  operating_system_version = var.operating_system_version
 }
 
 resource "oci_core_instance" "_" {
@@ -45,7 +43,7 @@ resource "oci_core_instance" "_" {
   }
   connection {
     host        = self.public_ip
-    user        = "ubuntu"
+    user        = var.operating_system_username
     private_key = tls_private_key.ssh.private_key_pem
   }
   provisioner "remote-exec" {
@@ -65,4 +63,10 @@ locals {
       role       = i == 1 ? "controlplane" : "worker"
     }
   }
+}
+
+locals {
+  k8s_node_ips = [
+    for node in values(local.nodes) : node.ip_address
+  ]
 }

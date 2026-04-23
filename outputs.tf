@@ -20,3 +20,23 @@ output "ssh-with-ubuntu-user" {
     ]
   )
 }
+
+output "subnet_id" {
+  value = local.subnet_id
+}
+
+output "compartment_id" {
+  value = local.compartment_id
+}
+
+output "http_backend_port" {
+  value = var.http_backend_port
+}
+
+output "https_backend_port" {
+  value = var.https_backend_port
+}
+
+output "k8s_node_ips" {
+  value = local.k8s_node_ips
+}

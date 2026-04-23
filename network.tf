@@ -36,3 +36,7 @@ resource "oci_core_subnet" "_" {
   route_table_id    = oci_core_default_route_table._.id
   security_list_ids = [oci_core_default_security_list._.id]
 }
+
+locals {
+  subnet_id = oci_core_subnet._.id
+}

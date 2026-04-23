@@ -22,12 +22,13 @@ if you want to develop or test applications on ARM.
 1. Create an Oracle Cloud Infrastructure account (just follow [this link][createaccount]).
 2. Have installed or [install kubernetes](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl).
 3. Have installed or [install terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli?in=terraform/oci-get-started).
-4. Have installed or [install OCI CLI ](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm).
-5. Configure [OCI credentials](https://learn.hashicorp.com/tutorials/terraform/oci-build?in=terraform/oci-get-started).
+4. Have installed or [install OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm).
+5. Have installed ssh/scp or [install Openssh](https://www.openssh.org/).
+6. Configure [OCI credentials](https://learn.hashicorp.com/tutorials/terraform/oci-build?in=terraform/oci-get-started).
    If you obtain a session token (with `oci session authenticate`), make sure to put the correct region, and when prompted for the profile name, enter `DEFAULT` so that Terraform finds the session token automatically.
-6. Download this project and enter its folder.
-7. `terraform init`
-8. `terraform apply`
+7. Download this project and enter its folder.
+8. `terraform init`
+9. `terraform apply -parallelism=1`
 
 That's it!
 
@@ -54,11 +55,11 @@ you should see a command that you can use to SSH into the first VM
 
 ## Windows
 
-It works with Windows 10/Powershell 5.1.
+It works with Windows 10/Powershell 7.
 
 It may be necesssary to change the execution policy to unrestricted.
 
-[PowerShell ExecutionPolicy](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-5.1)
+[PowerShell ExecutionPolicy](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.6)
 
 ## Customization
 
@@ -100,7 +101,7 @@ advantage of the free tier.
 This Terraform configuration:
 
 - generates an OpenSSH keypair and a kubeadm token
-- deploys 4 VMs using Ubuntu 20.04
+- deploys 4 VMs using Ubuntu 22.04
 - uses cloud-init to install and configure everything
 - installs Docker and Kubernetes packages
 - runs `kubeadm init` on the first VM
@@ -242,6 +243,33 @@ Then you can check the cloud init output file, e.g. like this:
 tail -n 100 -f /var/log/cloud-init-output.log
 ```
 
+### Troubleshooting ssh powershell
+
+```
+# 1. Reset inheritance (remove all inherited permissions)
+icacls "id_rsa" /inheritance:r
+
+# 2. Grant explicit Read (R) access only to your current username
+icacls "id_rsa" /grant:r "$($env:USERNAME):(R)"
+```
+
+### Troubleshooting NLB Creation or Detroying
+
+Error: 409-Conflict, Invalid State Transition of NLB lifeCycle state from Updating to Updating
+Try reduce parallelism or run terraform apply or destroy again
+```
+terraform apply -parallelism=1
+terraform destroy -parallelism=1
+```
+### Useful
+```
+Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+```
+
+```
+terraform apply *>&1 | Tee-Object -FilePath ("apply-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+terraform destroy *>&1 | Tee-Object -FilePath ("apply-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+```
 
 [ccm]: https://github.com/oracle/oci-cloud-controller-manager
 [createaccount]: https://bit.ly/free-oci-dat-k8s-on-arm
