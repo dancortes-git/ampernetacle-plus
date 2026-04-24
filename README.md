@@ -271,6 +271,13 @@ terraform apply *>&1 | Tee-Object -FilePath ("apply-{0}.log" -f (Get-Date -Forma
 terraform destroy *>&1 | Tee-Object -FilePath ("apply-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
 ```
 
+### Force Unlock
+
+```
+terraform force-unlock d574b9c2-35b3-203c-5592-8e26bdb24846
+```
+
+
 [ccm]: https://github.com/oracle/oci-cloud-controller-manager
 [createaccount]: https://bit.ly/free-oci-dat-k8s-on-arm
 [freetier]: https://www.oracle.com/cloud/free/

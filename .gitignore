@@ -12,3 +12,6 @@ kubeconfig
 *.log
 logs
 logs/*
+
+# hcl
+*.hcl
