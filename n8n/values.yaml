@@ -1,0 +1,58 @@
+# Template rendered by Terraform with templatefile().
+# The n8n chart creates the PVC automatically from this persistence block.
+main:
+  persistence:
+    enabled: true
+    storageClass: ${jsonencode(storage_class_name)}
+    size: ${jsonencode(persistence_size)}
+    accessMode: ReadWriteOnce
+  extraEnvVars:
+    N8N_HOST: ${jsonencode(n8n_host)}
+    N8N_PROTOCOL: ${jsonencode(n8n_protocol)}
+    WEBHOOK_URL: ${jsonencode(webhook_url)}
+
+worker:
+  extraEnvVars:
+    N8N_HOST: ${jsonencode(n8n_host)}
+    N8N_PROTOCOL: ${jsonencode(n8n_protocol)}
+    WEBHOOK_URL: ${jsonencode(webhook_url)}
+
+webhook:
+  url: ${jsonencode(webhook_url)}
+  extraEnvVars:
+    N8N_HOST: ${jsonencode(n8n_host)}
+    N8N_PROTOCOL: ${jsonencode(n8n_protocol)}
+    WEBHOOK_URL: ${jsonencode(webhook_url)}
+
+db:
+  type: postgresdb
+
+externalPostgresql:
+  host: ${jsonencode(db_host)}
+  port: ${db_port}
+  database: ${jsonencode(db_database)}
+  username: ${jsonencode(db_user)}
+  existingSecret: ${jsonencode(db_password_secret_name)}
+
+# The chart uses this field to select the password key when an external
+# PostgreSQL Secret is configured. PostgreSQL remains disabled below.
+postgresql:
+  enabled: false
+  auth:
+    username: ${jsonencode(db_user)}
+
+ingress:
+  enabled: true
+  className: ${jsonencode(ingress_class_name)}
+  annotations:
+    cert-manager.io/cluster-issuer: ${jsonencode(cert_manager_cluster_issuer)}
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  hosts:
+    - host: ${jsonencode(n8n_host)}
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: n8n-tls
+      hosts:
+        - ${jsonencode(n8n_host)}

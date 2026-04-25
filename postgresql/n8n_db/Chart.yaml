@@ -1,0 +1,7 @@
+apiVersion: v2
+name: n8n-db-init
+description: Initialize an application PostgreSQL database with a Kubernetes Job.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.25.0"

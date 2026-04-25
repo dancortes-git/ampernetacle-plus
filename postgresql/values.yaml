@@ -1,0 +1,17 @@
+auth:
+  existingSecret: postgresql-auth
+  secretKeys:
+    adminPasswordKey: postgresql-password
+
+primary:
+  persistence:
+    enabled: true
+    storageClass: nfs-dynamic
+    size: 20Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+
+service:
+  type: ClusterIP

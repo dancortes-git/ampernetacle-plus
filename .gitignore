@@ -1,6 +1,6 @@
 # Terraform
 .terraform*
-#terraform.tfstate*
+terraform.tfstate*
 
 # SSH keys
 id_rsa*
@@ -15,3 +15,5 @@ logs/*
 
 # hcl
 *.hcl
+
+.helm*
