@@ -1,6 +1,10 @@
 # Terraform
 .terraform*
 terraform.tfstate*
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
 
 # SSH keys
 id_rsa*
@@ -13,7 +17,7 @@ kubeconfig
 logs
 logs/*
 
-# hcl
-*.hcl
+# Local backend configuration
+backend.hcl
 
 .helm*

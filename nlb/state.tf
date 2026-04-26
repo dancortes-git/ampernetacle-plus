@@ -13,6 +13,6 @@ data "terraform_remote_state" "core" {
 
 terraform {
   backend "oci" {
-    key       = "k8s-nlb/terraform.tfstate"
+    key = "k8s-nlb/terraform.tfstate"
   }
 }

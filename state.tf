@@ -1,5 +1,5 @@
 terraform {
   backend "oci" {
-    key       = "k8s/terraform.tfstate"
+    key = "k8s/terraform.tfstate"
   }
 }

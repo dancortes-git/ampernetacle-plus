@@ -72,13 +72,13 @@ function Invoke-N8nDbTerraformApply {
     Push-Location -LiteralPath $PSScriptRoot
 
     try {
-        #Invoke-OciSessionAuthenticate
+        Invoke-OciSessionAuthenticate
 
-        #Invoke-TerraformCommand @(
-        #    "init",
-        #    "-backend-config=bucket=$bucketName",
-        #    "-backend-config=namespace=$ociNamespace"
-        #)
+        Invoke-TerraformCommand @(
+            "init",
+            "-backend-config=bucket=$bucketName",
+            "-backend-config=namespace=$ociNamespace"
+        )
 
         Invoke-TerraformCommand @(
             "apply"

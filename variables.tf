@@ -1,11 +1,13 @@
 variable "name" {
-  type    = string
-  default = "k8s-on-arm-in-oci"
+  description = "Base name used for OCI resources created by the root stack."
+  type        = string
+  default     = "k8s-on-arm-in-oci"
 }
 
 variable "description" {
-  type    = string
-  default = "Kubernetes cluster running on ARM instances within Oracle Cloud Infrastructure, used to host containerized workloads."
+  description = "Description assigned to the OCI compartment created for the cluster."
+  type        = string
+  default     = "Kubernetes cluster running on ARM instances within Oracle Cloud Infrastructure, used to host containerized workloads."
 }
 
 /*
@@ -18,56 +20,66 @@ Available flex shapes:
 */
 
 variable "shape" {
-  type    = string
-  default = "VM.Standard.A1.Flex"
+  description = "OCI compute shape used for all cluster nodes."
+  type        = string
+  default     = "VM.Standard.A1.Flex"
 }
 
 variable "operating_system" {
-  type    = string
-  default = "Canonical Ubuntu"
+  description = "Operating system name used to select the node image."
+  type        = string
+  default     = "Canonical Ubuntu"
 }
 
 variable "operating_system_version" {
-  type    = string
-  default = "22.04"
+  description = "Operating system version used to select the node image."
+  type        = string
+  default     = "22.04"
 }
 
 variable "operating_system_username" {
-  type    = string
-  default = "ubuntu"
+  description = "Default SSH username for the selected operating system image."
+  type        = string
+  default     = "ubuntu"
 }
 
 variable "how_many_nodes" {
-  type    = number
-  default = 4
+  description = "Number of compute instances to create for the Kubernetes cluster."
+  type        = number
+  default     = 4
 }
 
 variable "availability_domain" {
-  type    = number
-  default = 0
+  description = "Zero-based index of the OCI availability domain where nodes are created."
+  type        = number
+  default     = 0
 }
 
 variable "ocpus_per_node" {
-  type    = number
-  default = 1
+  description = "Number of OCPUs allocated to each flexible-shape node."
+  type        = number
+  default     = 1
 }
 
 variable "memory_in_gbs_per_node" {
-  type    = number
-  default = 6
+  description = "Memory in GiB allocated to each flexible-shape node."
+  type        = number
+  default     = 6
 }
 
 variable "http_backend_port" {
-  type    = number
-  default = 30800
+  description = "NodePort used by ingress-nginx for HTTP traffic and consumed by the NLB stack."
+  type        = number
+  default     = 30800
 }
 
 variable "https_backend_port" {
-  type    = number
-  default = 31800
+  description = "NodePort used by ingress-nginx for HTTPS traffic and consumed by the NLB stack."
+  type        = number
+  default     = 31800
 }
 
 variable "email_cert_issuer" {
-  type    = string
-  default = "daniel@dancortes.com"
+  description = "Email address registered with Let's Encrypt for cert-manager certificate issuance."
+  type        = string
 }

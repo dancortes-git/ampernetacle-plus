@@ -1,10 +1,10 @@
 # Agent Instructions for Ampernetacle Plus
 
 This root `AGENTS.md` file is the entry point for LLMs working on this repository.
-The detailed agent rules and coding patterns are separated into Markdown files under the `/docs` directory.
+Detailed agent rules, architecture notes, task workflows, and validation expectations live in Markdown files under the `/docs` directory.
 
-ALWAYS reference the relevant .md file BEFORE generating any code.
-ALWAYS write the documentation in ENGLISH.
+ALWAYS reference the relevant `.md` file in `/docs` BEFORE generating or changing any code.
+ALWAYS write project documentation and agent guidance in ENGLISH.
 
 ## Project purpose
 
@@ -18,6 +18,12 @@ The default deployment creates:
 - cert-manager with Let's Encrypt for automatic SSL/TLS certificates
 - an NFS provisioner for dynamic PersistentVolumes
 - metrics-server for resource monitoring
+
+The repository also contains optional Terraform stacks for:
+- an OCI Network Load Balancer in `/nlb`
+- PostgreSQL on Kubernetes in `/postgresql`
+- an application database initializer chart in `/postgresql/n8n_db`
+- n8n on Kubernetes in `/n8n`
 
 The project is intended for learning, testing, and low-cost experimentation, not production use.
 
@@ -46,13 +52,15 @@ Agents should:
 - avoid introducing production-only architecture
 - keep OCI provider versioning and existing resource patterns consistent
 - respect Helm-based application patterns for managing Kubernetes add-ons
-- verify changes with `terraform fmt` and respect existing modular structure
+- respect the separate Terraform state boundaries for root, NLB, PostgreSQL, n8n database initialization, and n8n
+- verify Terraform changes with `terraform fmt` for the affected stack and respect the existing directory structure
 - maintain clarity of educational purpose while supporting experimental features
 
 ## Notes
 
-- The repository is not currently divided into separate Terraform modules; all configuration lives in the root.
-- Kubernetes add-ons (Ingress, cert-manager, NFS provisioner) are installed via Helm during cluster bootstrap.
+- The root stack creates the OCI compartment, network, instances, cluster bootstrap, kubeconfig, and core outputs.
+- Optional stacks under `/nlb`, `/postgresql`, `/postgresql/n8n_db`, and `/n8n` consume remote state from earlier stacks.
+- Kubernetes add-ons (Ingress, cert-manager, NFS provisioner, metrics-server) are installed via Helm during cluster bootstrap.
 - The `/docs` content is the source of truth for agent instructions.
 - All new agent instruction files for this project should be added under `/docs`.
 - The project scope has expanded to include observability and networking features, but maintains free-tier compatibility.

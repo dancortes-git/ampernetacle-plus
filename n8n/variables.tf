@@ -69,5 +69,4 @@ variable "n8n_protocol" {
 variable "n8n_host" {
   description = "Public DNS host used to access n8n."
   type        = string
-  default     = "n8n.danielcespedes.qzz.io"
 }
