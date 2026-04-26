@@ -12,6 +12,11 @@ terraform {
       version = "3.1.0"
     }
 
+    random = {
+      source  = "hashicorp/random"
+      version = "3.7.2"
+    }
+
     oci = {
       source  = "oracle/oci"
       version = "8.10.0"
