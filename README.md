@@ -49,6 +49,14 @@ stack.
 Linux/macOS:
 
 ```bash
+chmod +x apply.sh fetch-kubeconfig.sh
+./apply.sh
+```
+
+Tip: Apply permissions to all sh files...
+
+```bash
+find . -name "*.sh" -type f -exec chmod +x {} \;
 ./apply.sh
 ```
 
@@ -71,35 +79,11 @@ step unless you are working on that stack directly. For details, see the
 After the root apply script finishes, apply optional application stacks in this
 order:
 
-1. [PostgreSQL](postgresql/README.md):
+1. [PostgreSQL](postgresql/README.md)
 
-   ```bash
-   ./postgresql/apply-postgresql.sh
-   ```
+2. [n8n database initializer](postgresql/n8n_db/README.md)
 
-   ```powershell
-   .\postgresql\ApplyPostgresql.ps1
-   ```
-
-2. [n8n database initializer](postgresql/n8n_db/README.md):
-
-   ```bash
-   ./postgresql/n8n_db/apply-n8n-db.sh
-   ```
-
-   ```powershell
-   .\postgresql\n8n_db\ApplyN8nDb.ps1
-   ```
-
-3. [n8n](n8n/README.md):
-
-   ```bash
-   ./n8n/apply-n8n.sh
-   ```
-
-   ```powershell
-   .\n8n\ApplyN8n.ps1
-   ```
+3. [n8n](n8n/README.md)
 
 That's it!
 
@@ -150,6 +134,7 @@ Use the matching destroy script for your platform:
 Linux/macOS:
 
 ```bash
+chmod +x destroy.sh
 ./destroy.sh
 ```
 
@@ -385,6 +370,56 @@ Try reduce parallelism or run terraform apply or destroy again
 terraform apply -parallelism=1
 terraform destroy -parallelism=1
 ```
+
+### Troubleshooting Execution Shell scripts at Ubuntu (wsl2)
+
+#### Symptom
+
+```
+Executing: terraform init -backend-config=./backend.hcl
+Initializing the backend...
+Initializing provider plugins...
+- Finding oracle/oci versions matching "8.10.0"...
+- Finding latest version of hashicorp/tls...
+- Finding latest version of hashicorp/local...
+- Finding latest version of hashicorp/null...
+- Finding latest version of hashicorp/random...
+- Finding latest version of hashicorp/cloudinit...
+- Finding latest version of hashicorp/http...
+- Installing hashicorp/random v3.8.1...
+- Installed hashicorp/random v3.8.1 (signed by HashiCorp)
+- Installing hashicorp/cloudinit v2.3.7...
+- Installed hashicorp/cloudinit v2.3.7 (signed by HashiCorp)
+- Installing hashicorp/http v3.5.0...
+- Installed hashicorp/http v3.5.0 (signed by HashiCorp)
+- Installing oracle/oci v8.10.0...
+- Installing hashicorp/tls v4.2.1...
+- Installed hashicorp/tls v4.2.1 (signed by HashiCorp)
+- Installing hashicorp/local v2.8.0...
+- Installed hashicorp/local v2.8.0 (signed by HashiCorp)
+- Installing hashicorp/null v3.2.4...
+- Installed hashicorp/null v3.2.4 (signed by HashiCorp)
+╷
+│ Error: Failed to install provider
+│
+│ Error while installing oracle/oci v8.10.0: github.com: Get "https://github.com/oracle/terraform-provider-oci/releases/download/v8.10.0/terraform-provider-oci_8.10.0_linux_amd64.zip": dial tcp: lookup
+│ github.com on 10.255.255.254:53: no such host
+╵
+Command failed with exit code 1: terraform init -backend-config=./backend.hcl
+```
+
+Terraform is using the WSL DNS server 10.255.255.254 (in this example), and this DNS server is failing specifically during the Oracle provider download.
+
+#### Solution
+
+Edit `/etc/resolv.conf`:
+
+```
+sudo cp /etc/resolv.conf /etc/resolv.conf.bak
+sudo rm -f /etc/resolv.conf
+printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions timeout:2 attempts:3\n" | sudo tee /etc/resolv.conf
+```
+
 ### Useful
 ```
 Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0

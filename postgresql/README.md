@@ -40,12 +40,14 @@ Run from the repository root.
 Linux/macOS:
 
 ```bash
+cd ./postgresql
 ./apply-postgresql.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
+cd ./postgresql
 .\ApplyPostgresql.ps1
 ```
 
@@ -60,12 +62,14 @@ Then run:
 Linux/macOS:
 
 ```bash
+cd ./postgresql
 ./destroy-postgresql.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
+cd ./postgresql
 .\DestroyPostgresql.ps1
 ```
 

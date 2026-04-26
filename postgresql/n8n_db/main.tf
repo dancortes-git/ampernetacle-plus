@@ -47,7 +47,7 @@ resource "kubernetes_secret_v1" "database_application" {
 
 resource "helm_release" "database_init" {
   name             = "n8n-db-init"
-  chart            = path.module
+  chart            = "${path.module}/chart"
   namespace        = local.postgresql_namespace
   create_namespace = false
 
