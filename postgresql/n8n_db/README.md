@@ -13,7 +13,7 @@ This stack bridges the PostgreSQL stack and the n8n application stack.
 - Generated application database password
 - Kubernetes Secret `n8n-db-secret` in the PostgreSQL namespace
 - Kubernetes Secret `n8n-db-secret` in the n8n namespace
-- Helm release `n8n-db-init`, using the local chart in this directory
+- Helm release `n8n-db-init`, using the local chart in `./chart`
 - Remote-state outputs consumed by `/n8n`
 
 ## ✅ Prerequisites
@@ -39,12 +39,14 @@ Run from the repository root.
 Linux/macOS:
 
 ```bash
+cd ./postgresql/n8n_db
 ./apply-n8n-db.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
+cd ./postgresql/n8n_db
 .\ApplyN8nDb.ps1
 ```
 
@@ -58,12 +60,14 @@ Destroy `/n8n` before destroying this stack. Then run:
 Linux/macOS:
 
 ```bash
+cd ./postgresql/n8n_db
 ./destroy-n8n-db.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
+cd ./postgresql/n8n_db
 .\DestroyN8nDb.ps1
 ```
 
