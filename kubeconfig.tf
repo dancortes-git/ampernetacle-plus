@@ -2,34 +2,33 @@ locals {
   is_windows = substr(pathexpand("~"), 0, 1) == "/" ? false : true
 }
 
-data "external" "kubeconfig" {
-  depends_on = [oci_core_instance._[1]]
-  program = local.is_windows ? [
-    "powershell",
-    <<EOT
-    write-host "{`"base64`": `"$(ssh -o StrictHostKeyChecking=no -l k8s -i ${local_file.ssh_private_key.filename} ${oci_core_instance._[1].public_ip} sudo base64 -w0 /etc/kubernetes/admin.conf)`"}"
+resource "null_resource" "fix_ssh_key_permissions_windows" {
+  count = local.is_windows ? 1 : 0
+
+  provisioner "local-exec" {
+    command = <<EOT
+    icacls "${local_file.ssh_private_key.filename}" /inheritance:r
+    icacls "${local_file.ssh_private_key.filename}" /grant:r "$($env:USERNAME):(F)"
     EOT
-    ] : [
-    "sh",
-    "-c",
-    <<-EOT
-      set -e
-      cat >/dev/null
-      echo '{"base64": "'$(
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-              -l k8s -i ${local_file.ssh_private_key.filename} \
-              ${oci_core_instance._[1].public_ip} \
-              'sudo cat /etc/kubernetes/admin.conf | base64 -w0'
-            )'"}'
-    EOT
-  ]
+
+    interpreter = ["pwsh", "-Command"]
+  }
 }
 
-resource "local_file" "kubeconfig" {
-  content         = base64decode(data.external.kubeconfig.result.base64)
-  filename        = "kubeconfig"
-  file_permission = "0600"
+resource "null_resource" "fetch_kubeconfig_windows" {
+  depends_on = [oci_core_instance._[1]]
+  count      = local.is_windows ? 1 : 0
+
   provisioner "local-exec" {
-    command = "kubectl --kubeconfig=kubeconfig config set-cluster kubernetes --server=https://${oci_core_instance._[1].public_ip}:6443"
+    command = "pwsh -ExecutionPolicy Bypass -File Fetch-KubeConfig.ps1 -KubeHost ${oci_core_instance._[1].public_ip} -KubeUser k8s -SshPrivateKeyFileName ${local_file.ssh_private_key.filename}"
+  }
+}
+
+resource "null_resource" "fetch_kubeconfig_unix" {
+  depends_on = [oci_core_instance._[1]]
+  count      = local.is_windows ? 0 : 1
+
+  provisioner "local-exec" {
+    command = "bash fetch-kubeconfig.sh ${oci_core_instance._[1].public_ip} k8s ${local_file.ssh_private_key.filename}"
   }
 }

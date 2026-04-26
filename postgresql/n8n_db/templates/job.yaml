@@ -1,0 +1,101 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "n8n-db-init.fullname" . }}
+  labels:
+    {{- include "n8n-db-init.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "n8n-db-init.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.job.podSecurityContext | nindent 8 }}
+      containers:
+        - name: db-init
+          image: "{{ .Values.job.image.repository }}:{{ .Values.job.image.tag }}"
+          imagePullPolicy: {{ .Values.job.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.job.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.job.resources | nindent 12 }}
+          env:
+            - name: DB_HOST
+              value: {{ .Values.db.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.db.port | quote }}
+            - name: DB_SSLMODE
+              value: {{ .Values.db.sslmode | quote }}
+            - name: DB_ADMIN_USER
+              value: {{ .Values.db.adminUser | quote }}
+            - name: DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: DB_USER
+              value: {{ .Values.db.user | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.adminPasswordSecret.name | quote }}
+                  key: {{ .Values.db.adminPasswordSecret.key | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.passwordSecret.name | quote }}
+                  key: {{ .Values.db.passwordSecret.key | quote }}
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              psql "host=${DB_HOST} port=${DB_PORT} dbname=postgres user=${DB_ADMIN_USER} sslmode=${DB_SSLMODE}" \
+                -v ON_ERROR_STOP=1 \
+                -v db_name="${DB_NAME}" \
+                -v db_user="${DB_USER}" \
+                -v db_password="${DB_PASSWORD}" <<'SQL'
+              SELECT format('CREATE DATABASE %I', :'db_name')
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM pg_catalog.pg_database
+                WHERE datname = :'db_name'
+              ) \gexec
+
+              SET app.db_user = :'db_user';
+              SET app.db_password = :'db_password';
+
+              DO $n8n_db_init$
+              BEGIN
+                IF NOT EXISTS (
+                  SELECT 1
+                  FROM pg_catalog.pg_roles
+                  WHERE rolname = current_setting('app.db_user')
+                ) THEN
+                  EXECUTE format(
+                    'CREATE USER %I WITH PASSWORD %L',
+                    current_setting('app.db_user'),
+                    current_setting('app.db_password')
+                  );
+                ELSE
+                  EXECUTE format(
+                    'ALTER USER %I WITH PASSWORD %L',
+                    current_setting('app.db_user'),
+                    current_setting('app.db_password')
+                  );
+                END IF;
+              END
+              $n8n_db_init$;
+
+              GRANT ALL PRIVILEGES ON DATABASE :"db_name" TO :"db_user";
+
+              \connect :"db_name"
+              GRANT USAGE, CREATE ON SCHEMA public TO :"db_user";
+              ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO :"db_user";
+              ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO :"db_user";
+              SQL

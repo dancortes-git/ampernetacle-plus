@@ -1,0 +1,2 @@
+# Required: use an email address you control for Let's Encrypt notifications.
+email_cert_issuer = "your-email@example.com"

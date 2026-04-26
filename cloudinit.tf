@@ -6,11 +6,10 @@ locals {
     "containerd.io",
     "curl",
     "docker-ce",
-    "gpg",
     "jq",
     "kubeadm",
-    "kubectl",
     "kubelet",
+    "kubectl",
     "lsb-release",
     "make",
     "prometheus-node-exporter",
@@ -19,6 +18,7 @@ locals {
     "tmux",
     "tree",
     "unzip",
+    "nfs-kernel-server",
   ]
 }
 
@@ -37,7 +37,7 @@ data "cloudinit_config" "_" {
       apt:
         sources:
           kubernetes.list:
-            source: "deb https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /"
+            source: "deb https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /"
             key: |
               ${indent(8, data.http.kubernetes_repo_key.response_body)}
           docker.list:
@@ -99,7 +99,7 @@ data "cloudinit_config" "_" {
     content_type = "text/x-shellscript"
     content      = <<-EOF
       #!/bin/sh
-      sed -i "s/-A INPUT -j REJECT --reject-with icmp-host-prohibited//" /etc/iptables/rules.v4 
+      sed -i "s/-A INPUT -j REJECT --reject-with icmp-host-prohibited//" /etc/iptables/rules.v4
       sed -i "s/-A FORWARD -j REJECT --reject-with icmp-host-prohibited//" /etc/iptables/rules.v4
       # There appears to be a bug in the netfilter-persistent scripts:
       # the "reload" and "restart" actions seem to append the rules files
@@ -143,6 +143,85 @@ data "cloudinit_config" "_" {
   }
 
   dynamic "part" {
+    for_each = each.value.role == "controlplane" ? ["yes"] : []
+    content {
+      filename     = "4-persistent-volume.sh"
+      content_type = "text/x-shellscript"
+      content      = <<-EOF
+        #!/bin/sh
+        mkdir -p /srv/nfs/kubedata
+        chown -R nobody:nogroup /srv/nfs/kubedata
+        chmod 777 /srv/nfs/kubedata
+        echo "/srv/nfs/kubedata *(rw,sync,no_subtree_check,no_root_squash)" > /etc/exports
+        exportfs -rav
+        systemctl restart nfs-kernel-server
+      EOF
+    }
+  }
+
+  dynamic "part" {
+    for_each = each.value.role == "controlplane" ? ["yes"] : []
+    content {
+      filename     = "5-install-applications.sh"
+      content_type = "text/x-shellscript"
+      content      = <<-EOF
+        #!/bin/bash
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        # Install Helm
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+        chmod 700 get_helm.sh
+        ./get_helm.sh
+        # Install the NGINX Ingress Controller
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+        helm install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress-nginx \
+          --create-namespace \
+          --set controller.service.type=NodePort \
+          --set controller.kind=DaemonSet \
+          --set controller.service.nodePorts.http=${var.http_backend_port} \
+          --set controller.service.nodePorts.https=${var.https_backend_port}
+        # Install metrics-server
+        helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+        helm repo update
+        helm install metrics-server metrics-server/metrics-server -n kube-system --set args="{--kubelet-insecure-tls=true}"
+        # Install cert-manager
+        helm repo add jetstack https://charts.jetstack.io
+        helm repo update
+        helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
+        kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=120s
+        # ClusterIssuer
+        kubectl apply -f - <<EOF2
+        apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: letsencrypt-prod
+        spec:
+          acme:
+            email: ${var.email_cert_issuer}
+            server: https://acme-v02.api.letsencrypt.org/directory
+            privateKeySecretRef:
+              name: letsencrypt-prod
+            solvers:
+              - http01:
+                  ingress:
+                    class: nginx
+        EOF2
+        # Install nfs-provisioner
+        helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+        helm repo update
+        helm install nfs-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+          --namespace nfs-provisioner \
+          --create-namespace \
+          --set nfs.server=10.0.0.11 \
+          --set nfs.path=/srv/nfs/kubedata \
+          --set storageClass.name=nfs-dynamic \
+          --set storageClass.defaultClass=true
+      EOF
+    }
+  }
+
+  dynamic "part" {
     for_each = each.value.role == "worker" ? ["yes"] : []
     content {
       filename     = "3-kubeadm-join.sh"
@@ -161,10 +240,11 @@ data "cloudinit_config" "_" {
     EOF
     }
   }
+
 }
 
 data "http" "kubernetes_repo_key" {
-  url = "https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key"
+  url = "https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key"
 }
 
 data "http" "docker_repo_key" {

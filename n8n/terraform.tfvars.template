@@ -1,0 +1,2 @@
+# Required: point this host to the NLB public IP before issuing TLS certificates.
+n8n_host = "n8n.example.com"

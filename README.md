@@ -1,45 +1,120 @@
-# Ampernetacle
+# Ampernetacle Plus
 
-This is a Terraform configuration to deploy a Kubernetes cluster on
-[Oracle Cloud Infrastructure][oci]. It creates a few virtual machines
-and uses [kubeadm] to install a Kubernetes control plane on the first
-machine, and join the other machines as worker nodes.
+Ampernetacle Plus is a Terraform configuration for deploying a practical
+multi-node Kubernetes cluster on [Oracle Cloud Infrastructure][oci]. It
+creates OCI virtual machines, uses [kubeadm] to bootstrap the control plane,
+joins the remaining machines as worker nodes, and installs useful cluster
+add-ons for learning and experimentation.
 
-By default, it deploys a 4-node cluster using ARM machines. Each machine
-has 1 OCPU and 6 GB of RAM, which means that the cluster fits within
-Oracle's (pretty generous if you ask me) [free tier][freetier].
+It is a fork of the [Original Ampertacle Repository][original-ampertable],
+with additional infrastructure helpers and Kubernetes add-ons for a more
+complete test environment.
+
+By default, it deploys a 4-node ARM cluster using Ubuntu 22.04 and
+`VM.Standard.A1.Flex` instances. Each node has 1 OCPU and 6 GB of RAM,
+which keeps the default setup aligned with Oracle's [free tier][freetier].
 
 **It is not meant to run production workloads,**
 but it's great if you want to learn Kubernetes with a "real" cluster
 (i.e. a cluster with multiple nodes) without breaking the bank, *and*
 if you want to develop or test applications on ARM.
 
-## Getting started
+## 🚀 Getting started
 
-1. Create an Oracle Cloud Infrastructure account (just follow [this link][createaccount]).
-2. Have installed or [install kubernetes](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl).
-3. Have installed or [install terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli?in=terraform/oci-get-started).
-4. Have installed or [install OCI CLI ](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm).
-5. Configure [OCI credentials](https://learn.hashicorp.com/tutorials/terraform/oci-build?in=terraform/oci-get-started).
-   If you obtain a session token (with `oci session authenticate`), make sure to put the correct region, and when prompted for the profile name, enter `DEFAULT` so that Terraform finds the session token automatically.
-6. Download this project and enter its folder.
-7. `terraform init`
-8. `terraform apply`
+### Prerequisites
+
+1. Create an Oracle Cloud Infrastructure account using [this link][createaccount].
+2. Install [Terraform][terraform-install].
+3. Install the [OCI CLI][oci-cli-install].
+4. Install `kubectl` using the [Kubernetes installation guide][kubernetes-install].
+   It is not required to create the cluster, but it is required to use it after provisioning.
+5. Install SSH/SCP tools, or [OpenSSH][openssh-install], so Terraform can retrieve the generated `kubeconfig`.
+6. Configure [OCI credentials][oci-credentials-config].
+7. In OCI, create a bucket (Object Storage) to be used as backend storage for the Terraform scripts.
+8. Download this project, enter its folder, and make sure `backend.hcl` contains
+   your OCI Object Storage backend settings (created by previous step). You can use `backend.hcl.template` as
+   a starting point.
+9. Before running any apply script, create `terraform.tfvars` from the template and
+   set `email_cert_issuer` to an email address you control. This value is required
+   by cert-manager when registering the Let's Encrypt issuer.
+
+If you authenticate with a session token, run `oci session authenticate`, choose
+the correct region, and enter `DEFAULT` when the OCI CLI asks for the profile
+name. The helper scripts also run this authentication flow before applying each
+stack.
+
+
+### Create the cluster
+
+Linux/macOS:
+
+```bash
+./apply.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\Apply.ps1
+```
+
+The root apply script runs the core Terraform stack first and then executes the
+`/nlb` stack automatically. This creates the OCI network, virtual machines,
+Kubernetes cluster, generated `kubeconfig`, ingress-nginx, cert-manager,
+metrics-server, NFS dynamic storage, and the OCI Network Load Balancer for
+HTTP/HTTPS traffic. You do not need to run `/nlb` as a separate post-install
+step unless you are working on that stack directly. For details, see the
+[`/nlb` README](nlb/README.md).
+
+### Optional application stacks
+
+After the root apply script finishes, apply optional application stacks in this
+order:
+
+1. [PostgreSQL](postgresql/README.md):
+
+   ```bash
+   ./postgresql/apply-postgresql.sh
+   ```
+
+   ```powershell
+   .\postgresql\ApplyPostgresql.ps1
+   ```
+
+2. [n8n database initializer](postgresql/n8n_db/README.md):
+
+   ```bash
+   ./postgresql/n8n_db/apply-n8n-db.sh
+   ```
+
+   ```powershell
+   .\postgresql\n8n_db\ApplyN8nDb.ps1
+   ```
+
+3. [n8n](n8n/README.md):
+
+   ```bash
+   ./n8n/apply-n8n.sh
+   ```
+
+   ```powershell
+   .\n8n\ApplyN8n.ps1
+   ```
 
 That's it!
 
-At the end of the `terraform apply`, a `kubeconfig` file is generated
+At the end of the root apply flow, a `kubeconfig` file is generated
 in this directory. To use your new cluster, you can do:
 
 Linux
 ```bash
-export KUBECONFIG=$PWD/kubeconfig
+export KUBECONFIG=./kubeconfig
 kubectl get nodes
 ```
 
 Windows
 ```powershell
-$env:KUBECONFIG="$pwd\kubeconfig"
+$env:KUBECONFIG=".\kubeconfig"
 kubectl get nodes
 ```
 
@@ -49,68 +124,145 @@ You can also log into the VMs. At the end of the Terraform output
 you should see a command that you can use to SSH into the first VM
 (just copy-paste the command).
 
-## Windows
+## 🏗️ Architecture
 
-It works with Windows 10/Powershell 5.1.
+![Architecture](docs/images/architecture.drawio.png)
 
-It may be necesssary to change the execution policy to unrestricted.
+## 🪟 Windows
 
-[PowerShell ExecutionPolicy](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-5.1)
+It works with Windows 10+ and PowerShell 7.
 
-## Customization
+It may be necessary to change the execution policy to run local scripts.
+
+[PowerShell ExecutionPolicy][powerShell-executionpolicy]
+
+## ⚙️ Customization
 
 Check `variables.tf` to see tweakable parameters. You can change the number
 of nodes, the size of the nodes, or switch to Intel/AMD instances if you'd
 like. Keep in mind that if you switch to Intel/AMD instances, you won't get
 advantage of the free tier.
 
-## Stopping the cluster
+## 🛑 Stopping the cluster
 
-`terraform destroy`
+Use the matching destroy script for your platform:
 
-## Implementation details
+Linux/macOS:
+
+```bash
+./destroy.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\Destroy.ps1
+```
+
+The root destroy script destroys `/nlb` first, then destroys the root cluster
+stack. If you installed the optional application stacks, destroy them first in
+reverse order:
+
+1. n8n:
+
+   ```bash
+   ./n8n/destroy-n8n.sh
+   ```
+
+   ```powershell
+   .\n8n\DestroyN8n.ps1
+   ```
+
+2. n8n database initializer:
+
+   ```bash
+   ./postgresql/n8n_db/destroy-n8n-db.sh
+   ```
+
+   ```powershell
+   .\postgresql\n8n_db\DestroyN8nDb.ps1
+   ```
+
+3. PostgreSQL:
+
+   ```bash
+   ./postgresql/destroy-postgresql.sh
+   ```
+
+   ```powershell
+   .\postgresql\DestroyPostgresql.ps1
+   ```
+
+## ✅ Cluster best practices
+
+1. Define resources (requests and limits) for all containers ([Manage Resources Container - Official Documentation][manage-resources-containers])
+2. Define liveness probe for all containers ([Liveness and Readiness Probes - Official Documentation][liveness-readiness-startup-probes])
+3. Define readiness probes for all containers ([Liveness and Readiness Probes - Official Documentation][liveness-readiness-startup-probes])
+
+### Resources, liveness, and readiness probe reference
+
+- Resources
+   - `requests`: Necessary resources to start/ready
+      - `requests.cpu`: In millicpu. Example "2m".
+      - `requests.memory`: Memory Unit. Example "5Mi".
+   - `limits`: Limit to restart
+      - `limits.cpu`: In millicpu. Example "2m".
+      - `limits.memory`: Memory Unit. Example "5Mi".
+
+- Liveness
+   - `failureThreshold`: After a probe fails failureThreshold times in a row, Kubernetes considers that the overall check
+   has failed: the container is not ready/healthy/live. Defaults to 3.
+   - `initialDelaySeconds`: Number of seconds after the container has started before startup, liveness or readiness probes are initiated.
+   - `periodSeconds`: How often (in seconds) to perform the probe. Default to 10 seconds. The minimum value is 1.
+   - `successThreshold`:  Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1.
+   Must be 1 for liveness and startup Probes. Minimum value is 1.
+   - `timeoutSeconds`:  Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1.
+
+
+## 🔧 Implementation details
 
 This Terraform configuration:
 
 - generates an OpenSSH keypair and a kubeadm token
-- deploys 4 VMs using Ubuntu 20.04
+- deploys 4 VMs using Ubuntu 22.04
 - uses cloud-init to install and configure everything
 - installs Docker and Kubernetes packages
 - runs `kubeadm init` on the first VM
 - runs `kubeadm join` on the other VMs
 - installs the Weave CNI plugin
+- installs ingress-nginx, cert-manager, metrics-server, and an NFS provisioner
 - transfers the `kubeconfig` file generated by `kubeadm`
 - patches that file to use the public IP address of the machine
 
-## Caveats
+## ⚠️ Caveats
 
 This doesn't install the [OCI cloud controller manager][ccm],
 which means that you cannot
 create services with `type: LoadBalancer`; or rather, if you create
 such services, their `EXTERNAL-IP` will remain `<pending>`.
 
-To expose services, use `NodePort`.
+Ingress traffic is handled by ingress-nginx using NodePorts, with the optional
+OCI Network Load Balancer forwarding public HTTP and HTTPS traffic to those
+ports. Dynamic storage is provided by an NFS provisioner running on the
+control-plane node, which is useful for experiments but not highly available.
 
-Likewise, there is no ingress controller and no storage class.
+Security rules are intentionally permissive for learning and testing. This is
+not a production-hardened Kubernetes platform.
 
-These might be added in a later iteration of this project.
-Meanwhile, if you want to install it manually, you can check
-the [OCI cloud controller manager github repository][ccm].
-
-## Remarks
+## 💬 Remarks
 
 Oracle Cloud also has a managed Kubernetes service called
 [Container Engine for Kubernetes (or OKE)][oke]. That service
 doesn't have the caveats mentioned above; however, it's not part
 of the free tier.
 
-## What does "Ampernetacle" mean?
+## 🧩 What does "Ampernetacle" mean?
 
 It's a *porte-manteau* between Ampere, Kubernetes, and Oracle.
 It's probably not the best name in the world but it's the one
 we have! If you have an idea for a better name let us know. 😊
 
-## Possible errors and how to address them
+## 🧯 Possible errors and how to address them
 
 ### Authentication problem
 
@@ -215,6 +367,49 @@ Then you can check the cloud init output file, e.g. like this:
 tail -n 100 -f /var/log/cloud-init-output.log
 ```
 
+### Troubleshooting SSH on PowerShell
+
+```
+# 1. Reset inheritance (remove all inherited permissions)
+icacls "id_rsa" /inheritance:r
+
+# 2. Grant explicit Read (R) access only to your current username
+icacls "id_rsa" /grant:r "$($env:USERNAME):(R)"
+```
+
+### Troubleshooting NLB creation or destruction
+
+Error: 409-Conflict, Invalid State Transition of NLB lifeCycle state from Updating to Updating
+Try reduce parallelism or run terraform apply or destroy again
+```
+terraform apply -parallelism=1
+terraform destroy -parallelism=1
+```
+### Useful
+```
+Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+```
+
+```
+terraform apply *>&1 | Tee-Object -FilePath ("apply-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+terraform destroy *>&1 | Tee-Object -FilePath ("apply-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+```
+
+### Force Unlock
+
+```
+terraform force-unlock d574b9c2-35b3-203c-5592-8e26bdb24846
+```
+
+## 🌐 Digital Plat
+
+To register a free domain, useful for tests and POCs.
+
+   - https://domain.digitalplat.org/
+   - https://github.com/DigitalPlatDev/FreeDomain/blob/main/documents/tutorial/getting-started/1.1-register-account.md
+   - https://github.com/DigitalPlatDev/FreeDomain/blob/main/documents/tutorial/getting-started/1.2-dns-hosting.md
+
+
 
 [ccm]: https://github.com/oracle/oci-cloud-controller-manager
 [createaccount]: https://bit.ly/free-oci-dat-k8s-on-arm
@@ -222,3 +417,12 @@ tail -n 100 -f /var/log/cloud-init-output.log
 [kubeadm]: https://kubernetes.io/docs/reference/setup-tools/kubeadm/
 [oci]: https://www.oracle.com/cloud/compute/
 [oke]: https://www.oracle.com/cloud-native/container-engine-kubernetes/
+[manage-resources-containers]: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+[liveness-readiness-startup-probes]: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+[original-ampertable]: https://github.com/jpetazzo/ampernetacle
+[kubernetes-install]: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
+[terraform-install]: https://learn.hashicorp.com/tutorials/terraform/install-cli?in=terraform/oci-get-started
+[oci-cli-install]: https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm
+[openssh-install]: https://www.openssh.org/
+[oci-credentials-config]: https://learn.hashicorp.com/tutorials/terraform/oci-build?in=terraform/oci-get-started
+[powerShell-executionpolicy]: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.6

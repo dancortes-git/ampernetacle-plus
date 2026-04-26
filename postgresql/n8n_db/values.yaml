@@ -1,0 +1,41 @@
+db:
+  host: postgres-postgresql.postgresql.svc.cluster.local
+  port: 5432
+  sslmode: disable
+  adminUser: postgres
+  adminPasswordSecret:
+    name: postgresql-auth
+    key: postgresql-password
+  name: n8n
+  user: n8n
+  passwordSecret:
+    create: false
+    name: n8n-db-secret
+    key: password
+    length: 32
+
+job:
+  image:
+    repository: postgres
+    tag: "15"
+    pullPolicy: IfNotPresent
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL

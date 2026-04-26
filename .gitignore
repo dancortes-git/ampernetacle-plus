@@ -1,9 +1,23 @@
 # Terraform
 .terraform*
 terraform.tfstate*
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
 
 # SSH keys
 id_rsa*
 
 # K8s
 kubeconfig
+
+# Logs
+*.log
+logs
+logs/*
+
+# Local backend configuration
+backend.hcl
+
+.helm*
