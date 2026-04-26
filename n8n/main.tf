@@ -5,6 +5,7 @@ locals {
   db_port                 = data.terraform_remote_state.n8n_db.outputs.db_port
   db_user                 = data.terraform_remote_state.n8n_db.outputs.db_user
   n8n_namespace           = data.terraform_remote_state.n8n_db.outputs.n8n_namespace
+  webhook_url             = "${var.n8n_protocol}://${var.n8n_host}/"
 }
 
 resource "helm_release" "n8n" {
@@ -28,7 +29,7 @@ resource "helm_release" "n8n" {
       n8n_protocol                = var.n8n_protocol
       persistence_size            = var.persistence_size
       storage_class_name          = var.storage_class_name
-      webhook_url                 = var.webhook_url
+      webhook_url                 = local.webhook_url
     })
   ]
 

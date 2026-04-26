@@ -20,6 +20,9 @@ terraform {
 }
 
 provider "helm" {
+  repository_config_path = "${path.module}/helm-repositories.yaml"
+  repository_cache       = "${path.module}/.terraform/helm/repository"
+
   kubernetes = {
     config_path = var.kubeconfig_path
   }

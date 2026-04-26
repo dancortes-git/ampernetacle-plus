@@ -277,6 +277,15 @@ terraform destroy *>&1 | Tee-Object -FilePath ("apply-{0}.log" -f (Get-Date -For
 terraform force-unlock d574b9c2-35b3-203c-5592-8e26bdb24846
 ```
 
+## Digital Plat
+
+To register a free domain, useful for tests and pocs.
+
+https://domain.digitalplat.org/
+https://github.com/DigitalPlatDev/FreeDomain/blob/main/documents/tutorial/getting-started/1.1-register-account.md
+https://github.com/DigitalPlatDev/FreeDomain/blob/main/documents/tutorial/getting-started/1.2-dns-hosting.md
+
+
 
 [ccm]: https://github.com/oracle/oci-cloud-controller-manager
 [createaccount]: https://bit.ly/free-oci-dat-k8s-on-arm
