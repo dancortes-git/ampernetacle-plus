@@ -22,6 +22,7 @@ scp -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
   "${KUBECONFIG_FILE}"
 
 # Replace the server address in the kubeconfig file with the Host IP
-sed -i "s/10\.0\.0\.11/${KUBE_HOST}/g" "${KUBECONFIG_FILE}"
+sed "s/10\.0\.0\.11/${KUBE_HOST}/g" "${KUBECONFIG_FILE}" > "${KUBECONFIG_FILE}.tmp"
+mv "${KUBECONFIG_FILE}.tmp" "${KUBECONFIG_FILE}"
 
 echo "Kubeconfig successfully retrieved"
