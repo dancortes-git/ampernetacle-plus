@@ -5,5 +5,5 @@ resource "oci_email_sender" "_" {
 
 resource "oci_identity_smtp_credential" "_" {
   user_id     = var.smtp_user_id
-  description = "SMTP credential for n8n email delivery"
+  description = "SMTP credential for email delivery"
 }

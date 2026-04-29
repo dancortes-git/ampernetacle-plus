@@ -5,9 +5,12 @@ data "terraform_remote_state" "root" {
   backend = "oci"
 
   config = {
-    bucket    = var.bucket
-    namespace = var.oci_namespace
-    key       = var.root_key
+    auth                = "SecurityToken"
+    bucket              = var.bucket
+    config_file_profile = "DEFAULT"
+    key                 = var.root_key
+    namespace           = var.oci_namespace
+    region              = var.region
   }
 }
 

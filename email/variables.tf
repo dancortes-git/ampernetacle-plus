@@ -26,5 +26,4 @@ variable "smtp_sender_email" {
 variable "region" {
   description = "OCI region where the cluster and email delivery service are located."
   type        = string
-  default     = "sa-saopaulo-1"
 }

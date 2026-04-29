@@ -60,18 +60,12 @@ get_hcl_string_value() {
 
 get_current_user_id() {
   local user_id
-  local status
 
-  printf 'Retrieving current OCI user OCID...\n'
+  printf 'Retrieving current OCI user OCID from DEFAULT profile...\n' >&2
+  user_id="$(get_oci_profile_value "user" "optional")"
 
-  set +e
-  user_id="$(oci iam user get-current-user --query 'data.id' --raw-output 2>/dev/null)"
-  status=$?
-  set -e
-
-  if (( status != 0 )); then
-    printf 'Could not retrieve current user OCID. Ensure OCI CLI is installed and authenticated.\n' >&2
-    exit 1
+  if [[ -z "${user_id}" ]]; then
+    user_id="$(get_current_user_id_from_security_token)"
   fi
 
   if [[ -z "${user_id}" ]]; then
@@ -80,6 +74,132 @@ get_current_user_id() {
   fi
 
   printf '%s\n' "${user_id}"
+}
+
+get_oci_profile_value() {
+  local name="$1"
+  local mode="${2:-required}"
+  local config_path="${OCI_CLI_CONFIG_FILE:-${HOME}/.oci/config}"
+  local value
+
+  if [[ ! -f "${config_path}" ]]; then
+    printf 'OCI CLI config file not found at %s. Ensure OCI CLI session is authenticated.\n' "${config_path}" >&2
+    exit 1
+  fi
+
+  value="$(
+    sed -nE "
+      /^\\[DEFAULT\\][[:space:]]*$/,/^\\[.*\\][[:space:]]*$/ {
+        s/^[[:space:]]*${name}[[:space:]]*=[[:space:]]*([^[:space:]#;]+).*/\\1/p
+      }
+    " "${config_path}" | head -n 1
+  )"
+
+  if [[ -z "${value}" ]]; then
+    if [[ "${mode}" == "optional" ]]; then
+      return 0
+    fi
+
+    printf "Could not find '%s' in OCI CLI DEFAULT profile. Run oci session authenticate and choose the DEFAULT profile.\n" "${name}" >&2
+    exit 1
+  fi
+
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+
+  printf '%s\n' "${value}"
+}
+
+resolve_oci_path() {
+  local path="$1"
+  local config_path="${OCI_CLI_CONFIG_FILE:-${HOME}/.oci/config}"
+  local config_dir
+
+  case "${path}" in
+    "~"/*)
+      printf '%s/%s\n' "${HOME}" "${path#"~/"}"
+      ;;
+    /*)
+      printf '%s\n' "${path}"
+      ;;
+    *)
+      config_dir="$(cd "$(dirname "${config_path}")" && pwd -P)"
+      printf '%s/%s\n' "${config_dir}" "${path}"
+      ;;
+  esac
+}
+
+get_current_user_id_from_security_token() {
+  local token_path
+  local resolved_token_path
+  local user_id
+
+  token_path="$(get_oci_profile_value "security_token_file")"
+  resolved_token_path="$(resolve_oci_path "${token_path}")"
+
+  if [[ ! -f "${resolved_token_path}" ]]; then
+    printf 'OCI security token file not found at %s. Run oci session authenticate again.\n' "${resolved_token_path}" >&2
+    exit 1
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    user_id="$(python3 -c '
+import base64
+import json
+import re
+import sys
+
+token_path = sys.argv[1]
+token = open(token_path, "r", encoding="utf-8").read().strip()
+parts = token.split(".")
+if len(parts) < 2:
+    sys.exit(2)
+
+payload = parts[1] + "=" * (-len(parts[1]) % 4)
+data = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")).decode("utf-8"))
+
+def find(value):
+    if isinstance(value, str) and re.match(r"^ocid1\.user\.", value):
+        return value
+    if isinstance(value, dict):
+        for item in value.values():
+            result = find(item)
+            if result:
+                return result
+    if isinstance(value, list):
+        for item in value:
+            result = find(item)
+            if result:
+                return result
+    return None
+
+result = find(data)
+if not result:
+    sys.exit(3)
+print(result)
+' "${resolved_token_path}")"
+  else
+    printf 'python3 is required to read the OCI user OCID from the security token when the DEFAULT profile has no user value.\n' >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${user_id}"
+}
+
+get_oci_profile_region() {
+  local region
+
+  printf 'Retrieving OCI region from DEFAULT profile...\n' >&2
+  region="$(get_oci_profile_value "region")"
+
+  if [[ -z "${region}" ]]; then
+    printf 'Could not find region in OCI CLI DEFAULT profile. Run oci session authenticate and choose a region.\n' >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${region}"
 }
 
 invoke_email_terraform_destroy() {
@@ -109,10 +229,16 @@ invoke_email_terraform_destroy() {
   smtp_user_id="$(get_current_user_id)"
   export TF_VAR_smtp_user_id="${smtp_user_id}"
 
+  region="$(get_oci_profile_region)"
+  export TF_VAR_region="${region}"
+
   invoke_terraform_command \
     init \
     "-backend-config=bucket=${bucket_name}" \
-    "-backend-config=namespace=${oci_namespace}"
+    "-backend-config=namespace=${oci_namespace}" \
+    "-backend-config=auth=SecurityToken" \
+    "-backend-config=config_file_profile=DEFAULT" \
+    "-backend-config=region=${region}"
 
   invoke_terraform_command destroy
 }

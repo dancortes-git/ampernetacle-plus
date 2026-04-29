@@ -48,10 +48,10 @@ approved sender domain:
 smtp_sender_email = "noreply@example.com"
 ```
 
-> **Note**: The `smtp_user_id` is automatically detected by the apply and destroy
-> scripts using `oci iam user get-current-user` after authentication. You do not
-> need to set it in `terraform.tfvars` unless you want to explicitly override it
-> with a different user's OCID.
+> **Note**: The `smtp_user_id` and `region` values are automatically read from
+> the OCI CLI `DEFAULT` profile created by `oci session authenticate`. You do not
+> need to set them in `terraform.tfvars` unless you want to explicitly override
+> them.
 
 ## 🚀 Create
 
@@ -124,8 +124,9 @@ Variables are defined in `variables.tf`:
 - `smtp_sender_email`: **required** approved sender email address in OCI Email
   Delivery. Update this in `terraform.tfvars` to match your sender domain.
 - `smtp_user_id`: OCID of the IAM user that owns the SMTP credential.
-  Automatically detected from `oci iam user get-current-user` unless overridden.
-- `region`: OCI region, defaulting to `sa-saopaulo-1`
+  Automatically detected from the OCI CLI `DEFAULT` profile unless overridden.
+- `region`: OCI region. Automatically detected from the OCI CLI `DEFAULT`
+  profile unless overridden.
 
 The scripts derive `bucket`, `oci_namespace`, and `root_key` automatically from
 the repository root `backend.hcl` and root `state.tf`.
