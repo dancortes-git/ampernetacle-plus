@@ -11,6 +11,19 @@ data "terraform_remote_state" "n8n_db" {
   }
 }
 
+/*
+ Terraform remote state configuration for the email delivery infrastructure
+*/
+data "terraform_remote_state" "email" {
+  backend = "oci"
+
+  config = {
+    bucket    = var.bucket
+    namespace = var.oci_namespace
+    key       = var.email_key
+  }
+}
+
 terraform {
   backend "oci" {
     key = "n8n/terraform.tfstate"

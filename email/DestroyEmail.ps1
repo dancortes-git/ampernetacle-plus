@@ -55,26 +55,48 @@ function Get-HclStringValue {
     return $match.Groups[1].Value
 }
 
-function Invoke-N8nTerraformDestroy {
+function Get-CurrentUserId {
+    Write-Host "Retrieving current OCI user OCID..."
+
+    try {
+        $output = & oci iam user get-current-user --query "data.id" --raw-output 2>&1
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not retrieve current user OCID. Exit code: ${LASTEXITCODE}. Ensure OCI CLI is installed and authenticated."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($output)) {
+            throw "Current user OCID is empty. Ensure OCI CLI session is valid."
+        }
+
+        return $output.Trim()
+    }
+    catch {
+        Write-Error "Error retrieving current user: $_"
+        throw
+    }
+}
+
+function Invoke-EmailTerraformDestroy {
     $rootPath = Split-Path -Parent $PSScriptRoot
     $backendPath = Join-Path $rootPath "backend.hcl"
-    $n8nDbStatePath = Join-Path $rootPath "postgresql\n8n_db\state.tf"
-    $emailStatePath = Join-Path $rootPath "email\state.tf"
+    $rootStatePath = Join-Path $rootPath "state.tf"
 
     $bucketName = Get-HclStringValue -Path $backendPath -Name "bucket"
     $ociNamespace = Get-HclStringValue -Path $backendPath -Name "namespace"
-    $n8nDbKey = Get-HclStringValue -Path $n8nDbStatePath -Name "key"
-    $emailKey = Get-HclStringValue -Path $emailStatePath -Name "key"
+    $rootKey = Get-HclStringValue -Path $rootStatePath -Name "key"
 
     $env:TF_VAR_bucket = $bucketName
     $env:TF_VAR_oci_namespace = $ociNamespace
-    $env:TF_VAR_n8n_db_key = $n8nDbKey
-    $env:TF_VAR_email_key = $emailKey
+    $env:TF_VAR_root_key = $rootKey
 
     Push-Location -LiteralPath $PSScriptRoot
 
     try {
         Invoke-OciSessionAuthenticate
+
+        $smtpUserId = Get-CurrentUserId
+        $env:TF_VAR_smtp_user_id = $smtpUserId
 
         Invoke-TerraformCommand @(
             "init",
@@ -91,4 +113,4 @@ function Invoke-N8nTerraformDestroy {
     }
 }
 
-Invoke-N8nTerraformDestroy
+Invoke-EmailTerraformDestroy

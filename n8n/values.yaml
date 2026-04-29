@@ -18,8 +18,15 @@ main:
     N8N_RUNNERS_BROKER_LISTEN_ADDRESS: "0.0.0.0"
     N8N_RUNNERS_BROKER_PORT: "5679"
     N8N_NATIVE_PYTHON_RUNNER: "true"
+    N8N_EMAIL_MODE: "smtp"
+    N8N_SMTP_HOST: ${jsonencode(smtp_host)}
+    N8N_SMTP_PORT: "587"
+    N8N_SMTP_USER: ${jsonencode(smtp_user)}
+    N8N_SMTP_SENDER: ${jsonencode(smtp_sender)}
+    N8N_SMTP_SSL: "false"
   extraSecretNamesForEnvFrom:
     - n8n-runner-auth
+    - ${jsonencode(smtp_secret_name)}
 
 worker:
   extraEnvVars:

@@ -5,6 +5,10 @@ locals {
   db_port                 = data.terraform_remote_state.n8n_db.outputs.db_port
   db_user                 = data.terraform_remote_state.n8n_db.outputs.db_user
   n8n_namespace           = data.terraform_remote_state.n8n_db.outputs.n8n_namespace
+  smtp_host               = data.terraform_remote_state.email.outputs.smtp_host
+  smtp_user               = data.terraform_remote_state.email.outputs.smtp_user
+  smtp_sender             = data.terraform_remote_state.email.outputs.smtp_sender_email
+  smtp_secret_name        = "n8n-smtp-credentials"
   runner_labels = {
     "app.kubernetes.io/name"       = "n8n-python-runner"
     "app.kubernetes.io/instance"   = var.release_name
@@ -31,6 +35,20 @@ resource "kubernetes_secret_v1" "runner_auth" {
 
   data = {
     N8N_RUNNERS_AUTH_TOKEN = random_password.runner_auth_token.result
+  }
+
+  type                           = "Opaque"
+  wait_for_service_account_token = false
+}
+
+resource "kubernetes_secret_v1" "smtp_credentials" {
+  metadata {
+    name      = local.smtp_secret_name
+    namespace = local.n8n_namespace
+  }
+
+  data = {
+    N8N_SMTP_PASS = data.terraform_remote_state.email.outputs.smtp_password
   }
 
   type                           = "Opaque"
@@ -68,6 +86,10 @@ resource "helm_release" "n8n" {
       n8n_host                    = var.n8n_host
       n8n_protocol                = var.n8n_protocol
       persistence_size            = var.persistence_size
+      smtp_host                   = local.smtp_host
+      smtp_secret_name            = local.smtp_secret_name
+      smtp_sender                 = local.smtp_sender
+      smtp_user                   = local.smtp_user
       storage_class_name          = var.storage_class_name
       webhook_url                 = local.webhook_url
     })
@@ -75,7 +97,8 @@ resource "helm_release" "n8n" {
 
   depends_on = [
     data.terraform_remote_state.n8n_db,
-    kubernetes_secret_v1.runner_auth
+    kubernetes_secret_v1.runner_auth,
+    kubernetes_secret_v1.smtp_credentials
   ]
 }
 

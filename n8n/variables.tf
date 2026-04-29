@@ -20,6 +20,11 @@ variable "n8n_db_key" {
   type        = string
 }
 
+variable "email_key" {
+  description = "OCI Object Storage key for the email delivery Terraform state."
+  type        = string
+}
+
 variable "persistence_size" {
   description = "Persistent volume size requested by the n8n Helm chart."
   type        = string

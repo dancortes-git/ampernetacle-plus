@@ -59,14 +59,17 @@ function Invoke-N8nTerraformApply {
     $rootPath = Split-Path -Parent $PSScriptRoot
     $backendPath = Join-Path $rootPath "backend.hcl"
     $n8nDbStatePath = Join-Path $rootPath "postgresql\n8n_db\state.tf"
+    $emailStatePath = Join-Path $rootPath "email\state.tf"
 
     $bucketName = Get-HclStringValue -Path $backendPath -Name "bucket"
     $ociNamespace = Get-HclStringValue -Path $backendPath -Name "namespace"
     $n8nDbKey = Get-HclStringValue -Path $n8nDbStatePath -Name "key"
+    $emailKey = Get-HclStringValue -Path $emailStatePath -Name "key"
 
     $env:TF_VAR_bucket = $bucketName
     $env:TF_VAR_oci_namespace = $ociNamespace
     $env:TF_VAR_n8n_db_key = $n8nDbKey
+    $env:TF_VAR_email_key = $emailKey
 
     Push-Location -LiteralPath $PSScriptRoot
 

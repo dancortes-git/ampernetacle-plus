@@ -1,0 +1,3 @@
+# Required: Email address to register as an approved sender in OCI Email Delivery.
+# This domain must have SPF/DKIM DNS records configured after apply.
+smtp_sender_email = "noreply@domain.com"

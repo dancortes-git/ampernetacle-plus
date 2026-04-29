@@ -58,34 +58,56 @@ get_hcl_string_value() {
   printf '%s\n' "${value}"
 }
 
-invoke_n8n_terraform_destroy() {
+get_current_user_id() {
+  local user_id
+  local status
+
+  printf 'Retrieving current OCI user OCID...\n'
+
+  set +e
+  user_id="$(oci iam user get-current-user --query 'data.id' --raw-output 2>/dev/null)"
+  status=$?
+  set -e
+
+  if (( status != 0 )); then
+    printf 'Could not retrieve current user OCID. Ensure OCI CLI is installed and authenticated.\n' >&2
+    exit 1
+  fi
+
+  if [[ -z "${user_id}" ]]; then
+    printf 'Current user OCID is empty. Ensure OCI CLI session is valid.\n' >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${user_id}"
+}
+
+invoke_email_terraform_destroy() {
   local root_path
   local backend_path
-  local n8n_db_state_path
-  local email_state_path
+  local root_state_path
   local bucket_name
   local oci_namespace
-  local n8n_db_key
-  local email_key
+  local root_key
 
   root_path="$(cd "${script_dir}/.." && pwd -P)"
   backend_path="${root_path}/backend.hcl"
-  n8n_db_state_path="${root_path}/postgresql/n8n_db/state.tf"
-  email_state_path="${root_path}/email/state.tf"
+  root_state_path="${root_path}/state.tf"
 
   bucket_name="$(get_hcl_string_value "${backend_path}" "bucket")"
   oci_namespace="$(get_hcl_string_value "${backend_path}" "namespace")"
-  n8n_db_key="$(get_hcl_string_value "${n8n_db_state_path}" "key")"
-  email_key="$(get_hcl_string_value "${email_state_path}" "key")"
+  root_key="$(get_hcl_string_value "${root_state_path}" "key")"
 
   export TF_VAR_bucket="${bucket_name}"
   export TF_VAR_oci_namespace="${oci_namespace}"
-  export TF_VAR_n8n_db_key="${n8n_db_key}"
-  export TF_VAR_email_key="${email_key}"
+  export TF_VAR_root_key="${root_key}"
 
   cd "${script_dir}"
 
   invoke_oci_session_authenticate
+
+  smtp_user_id="$(get_current_user_id)"
+  export TF_VAR_smtp_user_id="${smtp_user_id}"
 
   invoke_terraform_command \
     init \
@@ -95,4 +117,4 @@ invoke_n8n_terraform_destroy() {
   invoke_terraform_command destroy
 }
 
-invoke_n8n_terraform_destroy
+invoke_email_terraform_destroy

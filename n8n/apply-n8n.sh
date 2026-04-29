@@ -62,21 +62,26 @@ invoke_n8n_terraform_apply() {
   local root_path
   local backend_path
   local n8n_db_state_path
+  local email_state_path
   local bucket_name
   local oci_namespace
   local n8n_db_key
+  local email_key
 
   root_path="$(cd "${script_dir}/.." && pwd -P)"
   backend_path="${root_path}/backend.hcl"
   n8n_db_state_path="${root_path}/postgresql/n8n_db/state.tf"
+  email_state_path="${root_path}/email/state.tf"
 
   bucket_name="$(get_hcl_string_value "${backend_path}" "bucket")"
   oci_namespace="$(get_hcl_string_value "${backend_path}" "namespace")"
   n8n_db_key="$(get_hcl_string_value "${n8n_db_state_path}" "key")"
+  email_key="$(get_hcl_string_value "${email_state_path}" "key")"
 
   export TF_VAR_bucket="${bucket_name}"
   export TF_VAR_oci_namespace="${oci_namespace}"
   export TF_VAR_n8n_db_key="${n8n_db_key}"
+  export TF_VAR_email_key="${email_key}"
 
   cd "${script_dir}"
 

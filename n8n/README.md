@@ -25,9 +25,11 @@ Before applying this stack:
    root script executes `/nlb` automatically.
 2. Apply `/postgresql`.
 3. Apply `/postgresql/n8n_db`.
-4. For public HTTPS access, point your n8n DNS host to the public load balancer
+4. Apply `/email` to provision OCI Email Delivery resources and generate SMTP
+   credentials.
+5. For public HTTPS access, point your n8n DNS host to the public load balancer
    IP created by the root apply script before requesting TLS certificates.
-5. Create `terraform.tfvars` from the template and set `n8n_host`.
+6. Create `terraform.tfvars` from the template and set `n8n_host`.
 6. Authenticate with the OCI CLI using the `DEFAULT` profile:
 
    ```bash
@@ -106,13 +108,17 @@ Common variables are defined in `variables.tf`:
 - `ingress_class_name`: IngressClass name, defaulting to `nginx`
 - `cert_manager_cluster_issuer`: cert-manager ClusterIssuer, defaulting to `letsencrypt-prod`
 - `n8n_protocol`: public URL protocol, defaulting to `https`
+- `email_key`: OCI Object Storage key for the email delivery Terraform state,
+  defaulting to `email/terraform.tfstate`
 
 The scripts provide backend and remote-state variables automatically from the
-repository root and `/postgresql/n8n_db`.
+repository root, `/postgresql/n8n_db`, and `/email`.
 
 ## ⚠️ Notes
 
 - DNS must point to the public load balancer IP before cert-manager can
   complete HTTP-01 certificate validation.
 - The stack expects database outputs from `/postgresql/n8n_db`.
+- The stack expects SMTP outputs from `/email`. Ensure the OCI Email Delivery
+  sender domain is DNS-verified before testing email sending in n8n.
 - Persistent data can outlive the Helm release through the PVC.
